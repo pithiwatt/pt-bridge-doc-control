@@ -730,18 +730,15 @@ function Dashboard() {
         outstanding: Array.isArray(rOut) ? rOut : [],
       }));
       if (remote.config) setConfig(c => ({ ...c, ...remote.config }));
-      // ค่าเริ่มต้นของช่วงวันที่กรองข้อมูล = วันที่เริ่มปฏิบัติงาน–วันสิ้นสุดโครงการ (ตั้งครั้งเดียวตอนโหลด ไม่ทับค่าที่ผู้ใช้ปรับเอง)
-      const proj = (remote.config && remote.config.project) || config.project;
-      if (proj && proj.startDate) setGDateFrom(v => v || proj.startDate);
-      if (proj && proj.endDate) setGDateTo(v => v || proj.endDate);
+      // ตั้งใจปล่อยช่วงวันที่กรองข้อมูลให้ว่างไว้ = แสดงทุกรายการ
+      // (เดิมตั้งเป็นวันเริ่ม–วันสิ้นสุดโครงการ ทำให้รายการที่อยู่นอกช่วงสัญญาถูกซ่อนโดยที่ผู้ใช้ไม่รู้ตัว)
+      // ผู้ใช้เลือกช่วงเองได้จากแถบตัวกรองเมื่อต้องการ
       setSync({ status: "ok", msg: "เชื่อมต่อและซิงค์ข้อมูลกับ Google Sheet เรียบร้อยแล้ว", at: new Date() });
       setFirstLoad("ok");
       setTimeout(() => { loadedOk.current = true; }, 300);
     }).catch(err => {
       // โหลดไม่สำเร็จ — ห้าม auto-save เด็ดขาด กันเขียนข้อมูลตัวอย่างทับของจริง
       loadedOk.current = false;
-      if (config.project.startDate) setGDateFrom(v => v || config.project.startDate);
-      if (config.project.endDate) setGDateTo(v => v || config.project.endDate);
       setSync({ status: "offline", msg: "ยังไม่สามารถเชื่อมต่อกับ Google Sheet ได้", at: null });
       setFirstLoad("failed");
     });
