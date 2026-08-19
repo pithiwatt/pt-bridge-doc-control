@@ -1154,7 +1154,7 @@ function Dashboard() {
               </div>
               <div style={{ overflowX: "auto", marginTop: 8 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "RFA No.", key: "no" }, { label: "Type", key: "cat" }, { label: "Work", key: "work" }, { label: "Title", key: "title" }, { label: "Sheets" }, { label: "Rev", key: "rev" }, { label: "Submit", key: "submit" }, { label: "DOH Due", key: "due" }, { label: "ตอบกลับ", key: "responseDate" }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "RFA No.", key: "no" }, { label: "Type", key: "cat" }, { label: "Work", key: "work" }, { label: "Title", key: "title" }, { label: "Sheets", center: true }, { label: "Rev", key: "rev", center: true }, { label: "Submit", key: "submit", center: true }, { label: "DOH Due", key: "due", center: true }, { label: "ตอบกลับ", key: "responseDate", center: true }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={12} />}
                   {rows.map(({ s, idx }) => { const ss = statusStyle(s.status); const cs = catStyle[s.cat] || { bg: C.paper, fg: C.sub }; const dl = daysLeft(s.due); const done = ["Approved", "Approved with Comment"].includes(s.status); const nSheets = s.sheetList ? s.sheetList.length : 0; return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1192,7 +1192,7 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "RFI No.", key: "no" }, { label: "Work", key: "work" }, { label: "Subject", key: "subject" }, { label: "Sent", key: "sent" }, { label: "Due", key: "due" }, { label: "ตอบกลับ", key: "responseDate" }, { label: "Status", key: "status" }, { label: "Impact", key: "impact" }, { label: "Answer" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "RFI No.", key: "no" }, { label: "Work", key: "work" }, { label: "Subject", key: "subject" }, { label: "Sent", key: "sent", center: true }, { label: "Due", key: "due", center: true }, { label: "ตอบกลับ", key: "responseDate", center: true }, { label: "Status", key: "status" }, { label: "Impact", key: "impact", center: true }, { label: "Answer" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={11} />}
                   {rows.map(({ r, idx }) => { const ss = statusStyle(r.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1226,7 +1226,7 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Drawing No.", key: "no" }, { label: "Work", key: "work" }, { label: "Title", key: "title" }, { label: "Rev", key: "rev" }, { label: "Status", key: "status" }, { label: "RFA Ref.", key: "rfaRef" }, { label: "Files (ยื่น/ตอบ)" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Drawing No.", key: "no" }, { label: "Work", key: "work" }, { label: "Title", key: "title" }, { label: "Rev", key: "rev", center: true }, { label: "Status", key: "status" }, { label: "RFA Ref.", key: "rfaRef" }, { label: "Files (ยื่น/ตอบ)", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={7} />}
                   {rows.map(({ d, i }) => { const ss = statusStyle(d.status); return (
                     <tr key={i} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1258,7 +1258,7 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Due", key: "due" }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date", center: true }, { label: "From", key: "from", center: true }, { label: "To", key: "to", center: true }, { label: "Due", key: "due", center: true }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={9} />}
                   {rows.map(({ l, idx }) => { const ss = statusStyle(l.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1288,7 +1288,7 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Memo No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Status", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Memo No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date", center: true }, { label: "From", key: "from", center: true }, { label: "To", key: "to", center: true }, { label: "Status", key: "status" }, { label: "ไฟล์", center: true }, { label: "", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={8} />}
                   {rows.map(({ m, idx }) => { const ss = statusStyle(m.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1327,7 +1327,7 @@ function Dashboard() {
               </div>
               <div style={{ overflowX: "auto", marginTop: 8 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่บันทึก", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่ประชุม", key: "date" }, { label: "ผู้เข้าร่วมประชุม" }, { label: "ลักษณะ", key: "scope" }, { label: "สถานะ", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่บันทึก", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่ประชุม", key: "date", center: true }, { label: "ผู้เข้าร่วมประชุม" }, { label: "ลักษณะ", key: "scope", center: true }, { label: "สถานะ", key: "status" }, { label: "ไฟล์", center: true }, { label: "", center: true }]} />
                   {rows.length === 0 && <EmptyRow span={8} />}
                   {rows.map(({ m, idx }) => { const ss = statusStyle(m.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1400,7 +1400,7 @@ function Dashboard() {
                     okMsg={dates.length ? "มีบันทึกครบทุกวันในช่วงที่ตรวจสอบ" : ""} />
                   <div style={{ overflowX: "auto", marginTop: 8 }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}><tbody>
-                      <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "วันที่ปฏิบัติงาน", key: "date" }, { label: "Daily Request (ยื่น/ตอบ)" }, { label: "Daily Report (ยื่น/ตอบ)" }, { label: "สถานะ" }, { label: "หมายเหตุ", key: "note" }, { label: "" }]} />
+                      <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "วันที่ปฏิบัติงาน", key: "date" }, { label: "Daily Request (ยื่น/ตอบ)", center: true }, { label: "Daily Report (ยื่น/ตอบ)", center: true }, { label: "สถานะ", center: true }, { label: "หมายเหตุ", key: "note" }, { label: "", center: true }]} />
                       {rows.length === 0 && <EmptyRow span={6} />}
                       {rows.map(({ r, idx }) => { const st = dStat(r); return (
                         <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1449,7 +1449,7 @@ function Dashboard() {
                   okMsg={src.length ? "นำส่งรายงานครบทุกงวดแล้ว" : ""} />
                 <div style={{ overflowX: "auto", marginTop: 8 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 940 }}><tbody>
-                    <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่หนังสือ", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่", key: "date" }, { label: "งวด" }, { label: "จาก", key: "from" }, { label: "ถึง", key: "to" }, { label: "สถานะ", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                    <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่หนังสือ", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่", key: "date", center: true }, { label: "งวด", center: true }, { label: "จาก", key: "from", center: true }, { label: "ถึง", key: "to", center: true }, { label: "สถานะ", key: "status" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
                     {rows.length === 0 && <EmptyRow span={9} />}
                     {rows.map(({ l, idx }) => { const ss = statusStyle(l.status); return (
                       <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -1980,9 +1980,11 @@ function SortHead({ cols, sort, onSort }) {
       {cols.map((c, i) => {
         const sortable = c.key != null;
         const active = sortable && sort.key === c.key;
+        // c.center ต้องตรงกับ <Td center> ของคอลัมน์เดียวกันเสมอ
+        // ถ้าไม่ตรง หัวตารางจะชิดซ้ายแต่เนื้อในลอยไปกลางคอลัมน์ ทำให้อ่านแล้วไม่รู้ว่าค่าไหนคู่กับหัวไหน
         return (
           <th key={i} onClick={sortable ? () => onSort(c.key) : undefined}
-            style={{ textAlign: "left", padding: "11px 14px", fontSize: 11.5, fontWeight: 700, color: active ? C.blue : C.sub, letterSpacing: .3, textTransform: "uppercase", borderBottom: `2px solid ${active ? C.blue : C.line}`, whiteSpace: "nowrap", cursor: sortable ? "pointer" : "default", userSelect: "none" }}>
+            style={{ textAlign: c.center ? "center" : "left", padding: "11px 14px", fontSize: 11.5, fontWeight: 700, color: active ? C.blue : C.sub, letterSpacing: .3, textTransform: "uppercase", borderBottom: `2px solid ${active ? C.blue : C.line}`, whiteSpace: "nowrap", cursor: sortable ? "pointer" : "default", userSelect: "none" }}>
             {c.label}{sortable && <span style={{ marginLeft: 4, fontSize: 10, opacity: active ? 1 : .35 }}>{active ? (sort.dir === 1 ? "▲" : "▼") : "⇅"}</span>}
           </th>
         );
