@@ -1258,13 +1258,13 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Subject", key: "subject" }, { label: "I/O", key: "io" }, { label: "Due", key: "due" }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
-                  {rows.length === 0 && <EmptyRow span={10} />}
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Due", key: "due" }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                  {rows.length === 0 && <EmptyRow span={9} />}
                   {rows.map(({ l, idx }) => { const ss = statusStyle(l.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <Td mono bold>{l.no}</Td><Td center sub>{l.date.slice(5)}</Td><Td center><WorkTag w={l.from} /></Td><Td center><WorkTag w={l.to} /></Td>
+                      <Td mono bold>{l.no}</Td>
                       <Td>{l.subject}{l.reportType && reportTypeOf(l.reportType) && <span style={{ marginLeft: 7, background: "#E4ECF7", color: C.blue, fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 20, whiteSpace: "nowrap" }}>📊 {reportTypeOf(l.reportType).short}</span>}</Td>
-                      <Td center><span style={{ fontSize: 11, fontWeight: 700, color: l.io === "OUT" ? C.blue : C.green }}>{l.io === "OUT" ? "↗ OUT" : "↙ IN"}</span></Td>
+                      <Td center sub>{l.date.slice(5)}</Td><Td center><WorkTag w={l.from} /></Td><Td center><WorkTag w={l.to} /></Td>
                       <Td center sub>{l.due && l.due !== "—" ? l.due.slice(5) : "—"}</Td><Td><Pill text={l.status} bg={ss.bg} fg={ss.fg} /></Td>
                       <Td center><FilePair submit={l.fileSubmit} response={l.fileResponse} /></Td>
                       <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "letters", index: idx })} onDel={() => { if (confirm("ลบ?")) { deleteRow("letters", idx); flash("ลบแล้ว"); } }} /></Td>
@@ -1288,11 +1288,11 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Memo No.", key: "no" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Subject", key: "subject" }, { label: "Status", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Memo No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date" }, { label: "From", key: "from" }, { label: "To", key: "to" }, { label: "Status", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
                   {rows.length === 0 && <EmptyRow span={8} />}
                   {rows.map(({ m, idx }) => { const ss = statusStyle(m.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <Td mono bold>{m.no}</Td><Td center sub>{m.date && m.date !== "—" ? m.date.slice(5) : "—"}</Td><Td center><WorkTag w={m.from} /></Td><Td center><WorkTag w={m.to} /></Td><Td>{m.subject}</Td>
+                      <Td mono bold>{m.no}</Td><Td>{m.subject}</Td><Td center sub>{m.date && m.date !== "—" ? m.date.slice(5) : "—"}</Td><Td center><WorkTag w={m.from} /></Td><Td center><WorkTag w={m.to} /></Td>
                       <Td><Pill text={m.status} bg={ss.bg} fg={ss.fg} /></Td>
                       <Td center><FileBtn file={m.fileLink} /></Td>
                       <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "memos", index: idx })} onDel={() => { if (confirm("ลบ?")) { deleteRow("memos", idx); flash("ลบแล้ว"); } }} /></Td>
@@ -1327,14 +1327,15 @@ function Dashboard() {
               </div>
               <div style={{ overflowX: "auto", marginTop: 8 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่บันทึก", key: "no" }, { label: "วันที่ประชุม", key: "date" }, { label: "ผู้เข้าร่วมประชุม" }, { label: "ลักษณะ", key: "scope" }, { label: "เรื่อง", key: "subject" }, { label: "สถานะ", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่บันทึก", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่ประชุม", key: "date" }, { label: "ผู้เข้าร่วมประชุม" }, { label: "ลักษณะ", key: "scope" }, { label: "สถานะ", key: "status" }, { label: "ไฟล์" }, { label: "" }]} />
                   {rows.length === 0 && <EmptyRow span={8} />}
                   {rows.map(({ m, idx }) => { const ss = statusStyle(m.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <Td mono bold>{m.no}</Td><Td center sub>{m.date && m.date !== "—" ? m.date.slice(5) : "—"}</Td>
+                      <Td mono bold>{m.no}</Td>
+                      <Td>{m.subject}</Td>
+                      <Td center sub>{m.date && m.date !== "—" ? m.date.slice(5) : "—"}</Td>
                       <Td><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{attendCodes(m).map(c => <WorkTag key={c} w={c} />)}{attendCodes(m).length === 0 && <span style={{ color: C.sub, fontSize: 12 }}>—</span>}</div></Td>
                       <Td center>{m.scope === "internal" ? <Pill text="ภายใน" bg={C.amberBg} fg={C.amber} /> : <Pill text="ทางการ" bg={C.greenBg} fg={C.green} />}</Td>
-                      <Td>{m.subject}</Td>
                       <Td><Pill text={m.status} bg={ss.bg} fg={ss.fg} /></Td>
                       <Td center><FileBtn file={m.fileLink} /></Td>
                       <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "minutes", index: idx })} onDel={() => { if (confirm("ลบ?")) { deleteRow("minutes", idx); flash("ลบแล้ว"); } }} /></Td>
@@ -1448,15 +1449,15 @@ function Dashboard() {
                   okMsg={src.length ? "นำส่งรายงานครบทุกงวดแล้ว" : ""} />
                 <div style={{ overflowX: "auto", marginTop: 8 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 940 }}><tbody>
-                    <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่หนังสือ", key: "no" }, { label: "วันที่", key: "date" }, { label: "งวด" }, { label: "จาก", key: "from" }, { label: "ถึง", key: "to" }, { label: "เรื่อง", key: "subject" }, { label: "สถานะ", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
+                    <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่หนังสือ", key: "no" }, { label: "เรื่อง", key: "subject" }, { label: "วันที่", key: "date" }, { label: "งวด" }, { label: "จาก", key: "from" }, { label: "ถึง", key: "to" }, { label: "สถานะ", key: "status" }, { label: "Files (ยื่น/ตอบ)" }, { label: "" }]} />
                     {rows.length === 0 && <EmptyRow span={9} />}
                     {rows.map(({ l, idx }) => { const ss = statusStyle(l.status); return (
                       <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
                         <Td mono bold>{l.no}</Td>
+                        <Td>{l.subject}</Td>
                         <Td center sub>{fmtBEShort(l.date)}</Td>
                         <Td center><Pill text={periodLabel(periodKey(l.date, rt.unit), rt.unit)} bg="#E4ECF7" fg={C.blue} /></Td>
                         <Td center><WorkTag w={l.from} /></Td><Td center><WorkTag w={l.to} /></Td>
-                        <Td>{l.subject}</Td>
                         <Td><Pill text={l.status} bg={ss.bg} fg={ss.fg} /></Td>
                         <Td center><FilePair submit={l.fileSubmit} response={l.fileResponse} /></Td>
                         <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "letters", index: idx })} onDel={() => { if (confirm("ลบหนังสือฉบับนี้ออกจากทะเบียน?")) { deleteRow("letters", idx); flash("ลบแล้ว"); } }} /></Td>
@@ -2086,7 +2087,8 @@ function buildFields(kind, config, workCodes, catCodes, partyCodes) {
     letters: [
       { k: "no", label: "เลขที่หนังสือ", ph: "ระบุเลขที่ตามรูปแบบการเดินเลขของโครงการ" }, { k: "date", label: "วันที่", type: "date" },
       { k: "from", label: "จาก", type: "select", opts: partyCodes }, { k: "to", label: "ถึง", type: "select", opts: partyCodes },
-      { k: "subject", label: "เรื่อง", type: "textarea" }, { k: "io", label: "ทิศทาง", type: "select", opts: ["OUT", "IN"] },
+      // ไม่มีช่อง "ทิศทาง (IN/OUT)" เพราะช่อง "จาก/ถึง" บอกทิศทางอยู่แล้ว การกรอกซ้ำมีแต่จะขัดแย้งกันเอง
+      { k: "subject", label: "เรื่อง", type: "textarea" },
       // ติดป้ายที่ต้นทางเพียงจุดเดียว แล้วแท็บ Report จะดึงไปแสดงเองโดยอัตโนมัติ (ไม่ต้องกรอกซ้ำ)
       {
         k: "reportType", label: "เป็นการนำส่งรายงานตามงวดหรือไม่", type: "select", opts: [
@@ -2242,6 +2244,15 @@ function DateInput({ value, onChange }) {
     else onChange("");
   };
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  // ปี พ.ศ. ต้องเป็นรายการให้เลือก ห้ามให้พิมพ์เอง
+  // เดิมเป็น <input type="number"> แล้ว commit ทุกครั้งที่กด ทำให้ปีที่พิมพ์ค้างกลางคัน
+  // เช่น "2" ถูก padStart เป็น "0002" แล้วส่งกลับมาทับช่องที่กำลังพิมพ์
+  // และเมื่อพิมพ์เกิน 4 หลัก สตริงจะไม่ผ่านรูปแบบ YYYY-MM-DD ทำให้ทั้งวันและเดือนที่กรอกไว้หายไปด้วย
+  const nowBE = Number(todayBE.slice(0, 4));
+  const years = [];
+  for (let yy = nowBE + 10; yy >= nowBE - 10; yy--) years.push(yy);
+  // เอกสารเก่าที่ปีอยู่นอกช่วง ต้องเติมกลับเข้ารายการ ไม่งั้นค่าที่บันทึกไว้จะหายตอนเปิดแก้ไข
+  if (y && years.indexOf(Number(y)) < 0) { years.push(Number(y)); years.sort((a, b) => b - a); }
   const sel = { ...inp, padding: "8px 6px", cursor: "pointer" };
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -2253,7 +2264,10 @@ function DateInput({ value, onChange }) {
         <option value="">เดือน</option>
         {thMonthFull.map((label, i) => <option key={i} value={i + 1}>{label}</option>)}
       </select>
-      <input type="number" value={y || ""} onChange={e => commit(e.target.value, mo, d)} placeholder="พ.ศ." style={{ ...sel, flex: "0 0 76px" }} />
+      <select value={y ? Number(y) : ""} onChange={e => commit(e.target.value, mo, d)} style={{ ...sel, flex: "0 0 84px" }}>
+        <option value="">พ.ศ.</option>
+        {years.map(yy => <option key={yy} value={yy}>{yy}</option>)}
+      </select>
       {value && <button type="button" onClick={() => commit("", "", "")} title="ล้างวันที่" style={{ border: "none", background: "transparent", color: C.red, fontSize: 13, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>✕</button>}
     </div>
   );
