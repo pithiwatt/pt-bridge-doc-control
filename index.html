@@ -218,56 +218,85 @@ const reportTypeOf = (code) => REPORT_TYPES.find(r => r.code === code) || null;
 
 // แปลง พ.ศ. YYYY-MM-DD -> Date object (ค.ศ.)
 const beToDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y - 543, m - 1, d); };
-// เลขสัปดาห์มาตรฐาน ISO-8601 (สัปดาห์เริ่มวันจันทร์) คืนปี พ.ศ. ของสัปดาห์นั้น
-const isoWeek = (dt) => {
-  const d = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
-  const dayNum = d.getUTCDay() || 7;           // อาทิตย์ = 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);   // เลื่อนไปวันพฤหัสของสัปดาห์นั้น
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return { year: d.getUTCFullYear() + 543, week: Math.ceil((((d - yearStart) / 86400000) + 1) / 7) };
+// ── นิยาม "งวด" ของรายงาน ──
+// ⚠ งวดของโครงการนี้ไม่ใช่สัปดาห์ปฏิทิน ISO (จันทร์–อาทิตย์) และไม่ผูกกับเลขสัปดาห์ของปี
+// แต่แบ่งตาม "วันที่ในเดือน" เดือนละ 4 งวดตายตัว ตามระเบียบการนำส่งรายงานของโครงการ
+const WEEK_SLOTS = [
+  { i: 1, from: 1, to: 7 },
+  { i: 2, from: 8, to: 15 },
+  { i: 3, from: 16, to: 23 },
+  { i: 4, from: 24, to: 31 },   // ถึงสิ้นเดือนจริง (28/29/30/31)
+];
+// จำนวนวันในเดือน พ.ศ. ที่กำหนด
+const daysInMonthBE = (y, m) => new Date(y - 543, m, 0).getDate();
+
+// รหัสงวด — สัปดาห์ = "2569-08-W2" · เดือน = "2569-08"
+// (จงใจไม่มีฟังก์ชันแปลง "วันที่ -> งวด" เพราะงวดต้องมาจากที่ผู้ใช้เลือกเท่านั้น
+//  หนังสือนำส่งหลังจบงวดเสมอ การเดาจากวันที่จะได้งวดถัดไปทุกครั้ง)
+// ช่วงวันที่จริงของงวด (ใช้แสดงผล และใช้ตัดงวดที่อยู่นอกช่วงสัญญา)
+const periodRange = (key, unit) => {
+  if (!key) return null;
+  const p = key.split("-");
+  const y = Number(p[0]), m = Number(p[1]);
+  if (!y || !m) return null;
+  const mm = String(m).padStart(2, "0");
+  const last = daysInMonthBE(y, m);
+  if (unit === "month") return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(last).padStart(2, "0")}` };
+  const slot = WEEK_SLOTS[Number((p[2] || "W1").slice(1)) - 1] || WEEK_SLOTS[0];
+  return {
+    from: `${y}-${mm}-${String(slot.from).padStart(2, "0")}`,
+    to: `${y}-${mm}-${String(Math.min(slot.to, last)).padStart(2, "0")}`,
+  };
 };
-// รหัสงวดของวันที่หนึ่ง ๆ — เดือน = "2569-07", สัปดาห์ = "2569-W28"
-const periodKey = (beDate, unit) => {
-  if (!beDate || !/^\d{4}-\d{2}-\d{2}$/.test(beDate)) return "";
-  if (unit === "month") return beDate.slice(0, 7);
-  const { year, week } = isoWeek(beToDate(beDate));
-  return `${year}-W${String(week).padStart(2, "0")}`;
-};
-const periodLabel = (key, unit) => {
-  if (!key) return "—";
-  if (unit === "month") { const [y, m] = key.split("-"); return `${thMonth[m] || m} ${y.slice(2)}`; }
-  const [y, w] = key.split("-W");
-  return `สัปดาห์ที่ ${Number(w)}/${y.slice(2)}`;
-};
-// ไล่รหัสงวดทั้งหมดในช่วง fromBE..toBE เพื่อใช้หา "งวดที่ยังไม่ได้นำส่ง"
+// ไล่รหัสงวดทั้งหมดในช่วง fromBE..toBE (เรียงเก่า→ใหม่)
+// ตัดงวดที่ไม่ทับช่วงจริงออก เช่น เริ่มงาน 10 ส.ค. งวด 1–7 ส.ค. ย่อมไม่มีอยู่
 const periodsBetween = (fromBE, toBE, unit) => {
   if (!fromBE || !toBE || fromBE > toBE) return [];
   const out = [];
-  if (unit === "month") {
-    let [y, m] = fromBE.split("-").map(Number);
-    const [ey, em] = toBE.split("-").map(Number);
-    let guard = 0;
-    while ((y < ey || (y === ey && m <= em)) && guard++ < 400) {
-      out.push(`${y}-${String(m).padStart(2, "0")}`);
-      if (++m > 12) { m = 1; y++; }
-    }
-  } else {
-    let d = beToDate(fromBE);
-    const end = beToDate(toBE);
-    let guard = 0;
-    while (d <= end && guard++ < 600) {
-      const { year, week } = isoWeek(d);
-      const k = `${year}-W${String(week).padStart(2, "0")}`;
-      if (!out.includes(k)) out.push(k);
-      d = new Date(d.getTime() + 7 * 86400000);
-    }
-    // การก้าวทีละ 7 วันอาจข้ามสัปดาห์สุดท้ายที่ไม่เต็มสัปดาห์ จึงเติมกลับ
-    const { year: ey, week: ew } = isoWeek(end);
-    const endKey = `${ey}-W${String(ew).padStart(2, "0")}`;
-    if (!out.includes(endKey)) out.push(endKey);
+  let [y, m] = fromBE.split("-").map(Number);
+  const [ey, em] = toBE.split("-").map(Number);
+  let guard = 0;
+  while ((y < ey || (y === ey && m <= em)) && guard++ < 400) {
+    const mm = String(m).padStart(2, "0");
+    if (unit === "month") out.push(`${y}-${mm}`);
+    else WEEK_SLOTS.forEach(s => out.push(`${y}-${mm}-W${s.i}`));
+    if (++m > 12) { m = 1; y++; }
   }
-  return out;
+  return out.filter(k => { const r = periodRange(k, unit); return r && r.to >= fromBE && r.from <= toBE; });
 };
+// ป้ายกำกับงวด — seq คือลำดับที่นับต่อเนื่องตั้งแต่วันเริ่มปฏิบัติงานของโครงการ
+// (ไม่ใช่เลขสัปดาห์ของปฏิทินปี เพราะผู้ใช้อ้างอิง "รายงานฉบับที่เท่าไรของโครงการ")
+const periodLabel = (key, unit, seq) => {
+  if (!key) return "—";
+  const r = periodRange(key, unit);
+  if (!r) return "—";
+  const n = seq ? (unit === "month" ? `เดือนที่ ${seq}` : `สัปดาห์ที่ ${seq}`) : "";
+  if (unit === "month") {
+    const [y, m] = key.split("-");
+    const mLabel = `${thMonth[m] || m} ${y.slice(2)}`;
+    return n ? `${n} · ${mLabel}` : mLabel;
+  }
+  const span = `${Number(r.from.split("-")[2])}–${fmtBEShort(r.to)}`;
+  return n ? `${n} · ${span}` : span;
+};
+// ตัวเลือก "งวดที่รายงาน" สำหรับฟอร์มหนังสือ
+// ลำดับงวดนับจากต้นสัญญาเสมอ เพื่อให้เลขตรงกับที่แสดงในแท็บ Report
+// แต่แสดงเฉพาะงวดที่ถึงกำหนดแล้ว (เผื่ออีก 1 งวดสำหรับนำส่งล่วงหน้า) เพราะสัญญา 900 วัน
+// มีงวดรายสัปดาห์ร้อยกว่างวด ถ้าโชว์หมดจะเลื่อนหาลำบาก · เรียงงวดใหม่ไว้บนสุด
+const reportPeriodOptions = (project, reportCode, current) => {
+  const rt = reportTypeOf(reportCode);
+  const start = project && project.startDate;
+  if (!rt || !start) return [];
+  const all = periodsBetween(start, (project.endDate || todayBE), rt.unit);
+  const seqOf = {};
+  all.forEach((k, i) => { seqOf[k] = i + 1; });
+  const due = all.filter(k => { const r = periodRange(k, rt.unit); return r && r.from <= todayBE; });
+  if (all[due.length]) due.push(all[due.length]);
+  // ค่าที่บันทึกไว้ต้องมีในรายการเสมอ ไม่งั้นเปิดแก้ไขแล้วงวดเดิมจะหายไปเงียบ ๆ
+  if (current && due.indexOf(current) < 0) due.push(current);
+  return due.reverse().map(k => ({ value: k, label: periodLabel(k, rt.unit, seqOf[k]) }));
+};
+
 // ไล่ "ทุกวัน" ในช่วง — ใช้หาวันที่ยังไม่มีบันทึก Daily
 const daysBetween = (fromBE, toBE) => {
   if (!fromBE || !toBE || fromBE > toBE) return [];
@@ -820,7 +849,11 @@ function Dashboard() {
                 <div style={{ fontSize: 12.5, color: "#C9D6EA", marginTop: 2 }}>{config.project.nameTh}</div>
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
+            {/* flexGrow ทำให้กล่องนี้ยืดเต็มความกว้างเมื่อจอแคบจนถูกดันลงบรรทัดใหม่
+                ถ้าไม่ใส่ กล่องจะกว้างเท่าเนื้อหาแล้วไปกองชิดซ้ายของบรรทัด แต่ข้อความข้างในยังชิดขวาของกล่อง
+                ผลคือข้อความไปลอยอยู่กลางจอโดยไม่อิงขอบไหนเลย (วัดจริงที่จอ 800px เหลือที่ว่างทางขวา 422px)
+                เมื่อยืดเต็มบรรทัดแล้ว ข้อความและปุ่มจะชิดขวาจริง ตรงแนวเดียวกับตอนจอกว้าง */}
+            <div style={{ textAlign: "right", flexGrow: 1 }}>
               <div className="hide-sm" style={{ fontSize: 12, color: "#C9D6EA", lineHeight: 1.7 }}>
                 {(config.project.budget || config.project.duration) && (
                   <div>
@@ -1258,14 +1291,15 @@ function Dashboard() {
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}><tbody>
-                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date", center: true }, { label: "From", key: "from", center: true }, { label: "To", key: "to", center: true }, { label: "Due", key: "due", center: true }, { label: "Status", key: "status" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
-                  {rows.length === 0 && <EmptyRow span={9} />}
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "Doc No.", key: "no" }, { label: "Subject", key: "subject" }, { label: "Date", key: "date", center: true }, { label: "From", key: "from", center: true }, { label: "To", key: "to", center: true }, { label: "Due", key: "due", center: true }, { label: "Status", key: "status" }, { label: "หมายเหตุ", key: "remark" }, { label: "Files (ยื่น/ตอบ)", center: true }, { label: "", center: true }]} />
+                  {rows.length === 0 && <EmptyRow span={10} />}
                   {rows.map(({ l, idx }) => { const ss = statusStyle(l.status); return (
                     <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
                       <Td mono bold>{l.no}</Td>
                       <Td>{l.subject}{l.reportType && reportTypeOf(l.reportType) && <span style={{ marginLeft: 7, background: "#E4ECF7", color: C.blue, fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 20, whiteSpace: "nowrap" }}>📊 {reportTypeOf(l.reportType).short}</span>}</Td>
                       <Td center sub>{l.date.slice(5)}</Td><Td center><WorkTag w={l.from} /></Td><Td center><WorkTag w={l.to} /></Td>
                       <Td center sub>{l.due && l.due !== "—" ? l.due.slice(5) : "—"}</Td><Td><Pill text={l.status} bg={ss.bg} fg={ss.fg} /></Td>
+                      <Td sub>{l.remark || "—"}</Td>
                       <Td center><FilePair submit={l.fileSubmit} response={l.fileResponse} /></Td>
                       <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "letters", index: idx })} onDel={() => { if (confirm("ลบ?")) { deleteRow("letters", idx); flash("ลบแล้ว"); } }} /></Td>
                     </tr>); })}
@@ -1422,12 +1456,22 @@ function Dashboard() {
           const rt = reportTypeOf(repSub);
           const src = data.letters.map((l, idx) => ({ l, idx })).filter(({ l }) => l.reportType === repSub);
           const rows = applySort(src.filter(({ l }) => (fStatus === "All" || l.status === fStatus) && (fFrom === "All" || l.from === fFrom) && (fTo === "All" || l.to === fTo) && inDateRange(l[dateFieldFor("letters", gDateRef)], gDateFrom, gDateTo) && matchQ(l)), x => x.l);
-          // งวดที่ยังไม่ได้นำส่ง — เทียบงวดทั้งหมดตั้งแต่วันเริ่มปฏิบัติงานถึงวันนี้ กับงวดที่มีหนังสือแล้ว
-          const doneKeys = new Set(src.map(({ l }) => periodKey(l.date, rt.unit)).filter(Boolean));
+          // ⚠ งวดต้องอ่านจากช่อง reportPeriod ที่ผู้ใช้เลือกไว้เท่านั้น ห้ามคำนวณจากวันที่บนหนังสือ
+          // เพราะหนังสือนำส่งหลังจบงวดเสมอ (เช่น รายงานช่วง 1–7 ส.ค. ออกหนังสือวันที่ 10 ส.ค.)
+          // ถ้าเดาจากวันที่ จะไปนับเป็นงวดถัดไปทุกครั้ง
           const letterDates = src.map(({ l }) => l.date).filter(Boolean).sort();
           const spanFrom = config.project.startDate || letterDates[0] || "";
           const spanTo = [config.project.endDate || todayBE, todayBE].sort()[0];
+          // ลำดับงวดนับต่อเนื่องจากวันเริ่มปฏิบัติงาน — ไล่จนสุดสัญญาเพื่อให้เลขคงที่ไม่ขยับตามวันที่ปัจจุบัน
+          const seqFrom = config.project.startDate || spanFrom;
+          const seqTo = config.project.endDate || spanTo;
+          const seqOf = {};
+          periodsBetween(seqFrom, seqTo, rt.unit).forEach((k, i) => { seqOf[k] = i + 1; });
+          const labelOf = (k) => periodLabel(k, rt.unit, seqOf[k]);
+          const doneKeys = new Set(src.map(({ l }) => l.reportPeriod).filter(Boolean));
           const missingPeriods = spanFrom ? periodsBetween(spanFrom, spanTo, rt.unit).filter(k => !doneKeys.has(k)) : [];
+          // หนังสือที่ยังไม่ได้ระบุงวด — ต้องเตือนแยก ไม่งั้นจะดูเหมือนงวดนั้นขาดส่งทั้งที่ส่งแล้ว
+          const unsetCount = src.filter(({ l }) => !l.reportPeriod).length;
           return (
             <div>
               {subBar}
@@ -1444,8 +1488,13 @@ function Dashboard() {
                   <DateRangeFilter from={gDateFrom} to={gDateTo} onFrom={setGDateFrom} onTo={setGDateTo} ref_={gDateRef} onRef={setGDateRef} />
                   <Count n={rows.length} total={src.length} />
                 </FilterBar>
+                {unsetCount > 0 && (
+                  <div style={{ margin: "10px 20px 0", background: C.redBg, border: `1px solid ${C.red}55`, borderRadius: 10, padding: "10px 14px", fontSize: 12.5, color: C.red, fontWeight: 600 }}>
+                    ⚠ มีหนังสือ {unsetCount} ฉบับที่ยังไม่ได้ระบุงวด — กรุณาเปิดแก้ไขแล้วเลือกงวดให้ครบ มิฉะนั้นงวดนั้นจะยังถูกนับว่ายังไม่ได้นำส่ง
+                  </div>
+                )}
                 <GapNotice title={rt.unit === "week" ? "สัปดาห์ที่ยังไม่ได้นำส่งรายงาน" : "เดือนที่ยังไม่ได้นำส่งรายงาน"}
-                  items={missingPeriods.map(k => periodLabel(k, rt.unit))}
+                  items={missingPeriods.map(labelOf)}
                   okMsg={src.length ? "นำส่งรายงานครบทุกงวดแล้ว" : ""} />
                 <div style={{ overflowX: "auto", marginTop: 8 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 940 }}><tbody>
@@ -1456,7 +1505,9 @@ function Dashboard() {
                         <Td mono bold>{l.no}</Td>
                         <Td>{l.subject}</Td>
                         <Td center sub>{fmtBEShort(l.date)}</Td>
-                        <Td center><Pill text={periodLabel(periodKey(l.date, rt.unit), rt.unit)} bg="#E4ECF7" fg={C.blue} /></Td>
+                        <Td center>{l.reportPeriod
+                          ? <Pill text={labelOf(l.reportPeriod)} bg="#E4ECF7" fg={C.blue} />
+                          : <Pill text="ยังไม่ระบุงวด" bg={C.redBg} fg={C.red} />}</Td>
                         <Td center><WorkTag w={l.from} /></Td><Td center><WorkTag w={l.to} /></Td>
                         <Td><Pill text={l.status} bg={ss.bg} fg={ss.fg} /></Td>
                         <Td center><FilePair submit={l.fileSubmit} response={l.fileResponse} /></Td>
@@ -2098,7 +2149,15 @@ function buildFields(kind, config, workCodes, catCodes, partyCodes) {
           ...REPORT_TYPES.map(r => ({ value: r.code, label: `ใช่ — ${r.label}` })),
         ]
       },
+      // งวดที่รายงาน — โผล่เฉพาะเมื่อระบุว่าเป็นรายงานตามงวด
+      // ต้องให้เลือกเอง ไม่คำนวณจากวันที่หนังสือ เพราะหนังสือออกหลังจบงวดเสมอ
+      {
+        k: "reportPeriod", label: "งวดที่รายงาน", type: "select", opts: [],
+        showIf: (f) => !!f.reportType,
+        optsOf: (f) => [{ value: "", label: "— เลือกงวด —" }, ...reportPeriodOptions(config.project, f.reportType, f.reportPeriod)],
+      },
       { k: "due", label: "กำหนดตอบกลับ", type: "date" }, { k: "status", label: "สถานะ", type: "select", opts: config.statuses.lt },
+      { k: "remark", label: "หมายเหตุ", type: "textarea", ph: "บันทึกประเด็นเพิ่มเติมของหนังสือฉบับนี้ (ถ้ามี)" },
       { k: "fileSubmit", label: "ไฟล์ที่นำส่ง", type: "file" }, { k: "fileResponse", label: "ไฟล์ตอบกลับ", type: "file" },
     ],
     daily: [
@@ -2135,8 +2194,16 @@ const TITLES = { outstanding: "Outstanding Issue", rfa: "RFA — ขออนุ
 function EditModal({ modal, data, config, workCodes, catCodes, partyCodes, onClose, onSave }) {
   const fields = buildFields(modal.kind, config, workCodes, catCodes, partyCodes);
   const existing = modal.index != null ? data[modal.kind][modal.index] : null;
-  const [form, setForm] = useState(() => { const init = {}; fields.forEach(f => { init[f.k] = existing ? (existing[f.k] ?? "") : (f.type === "select" ? (typeof f.opts[0] === "object" ? f.opts[0].value : f.opts[0]) : ""); }); if (modal.kind === "rfa") init.sheetList = existing ? (existing.sheetList || []) : []; if (!existing && modal.preset) Object.assign(init, modal.preset); return init; });
-  const set = (k, v) => setForm(s => ({ ...s, [k]: v }));
+  // ช่องแบบ select ที่ยังไม่มีตัวเลือกตายตัว (opts ว่าง เพราะคำนวณจากค่าอื่นในฟอร์ม) ต้องเริ่มที่ ""
+  // ไม่งั้น f.opts[0] จะเป็น undefined แล้ว React จะเปลี่ยนช่องนั้นเป็น uncontrolled input
+  const [form, setForm] = useState(() => { const init = {}; fields.forEach(f => { init[f.k] = existing ? (existing[f.k] ?? "") : (f.type === "select" && f.opts && f.opts.length ? (typeof f.opts[0] === "object" ? f.opts[0].value : f.opts[0]) : ""); }); if (modal.kind === "rfa") init.sheetList = existing ? (existing.sheetList || []) : []; if (!existing && modal.preset) Object.assign(init, modal.preset); return init; });
+  const set = (k, v) => setForm(s => {
+    const next = { ...s, [k]: v };
+    // เปลี่ยนประเภทรายงานเมื่อไร งวดที่เลือกไว้เดิมใช้ไม่ได้ทันที
+    // (รหัสงวดรายสัปดาห์ "2569-08-W2" คนละรูปแบบกับรายเดือน "2569-08" ถ้าค้างไว้จะแสดงผิด)
+    if (k === "reportType") next.reportPeriod = "";
+    return next;
+  });
   const isEdit = modal.index != null;
   const fileRef = useRef(null);
   const onPickFile = (e) => { const f = e.target.files && e.target.files[0]; if (f) set("file", "uploaded:" + f.name); };
@@ -2154,12 +2221,12 @@ function EditModal({ modal, data, config, workCodes, catCodes, partyCodes, onClo
           <button onClick={onClose} style={{ border: "none", background: "rgba(255,255,255,.15)", color: "#fff", width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
         <div style={{ padding: "18px 22px", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          {fields.map(f => (
+          {fields.filter(f => !f.showIf || f.showIf(form)).map(f => (
             <div key={f.k} style={{ gridColumn: (f.type === "textarea" || f.type === "file" || f.type === "multiselect") ? "1 / -1" : "auto" }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: C.slate, display: "block", marginBottom: 5 }}>{f.label}</label>
               {f.type === "select" ? (
                 <select value={form[f.k]} onChange={e => set(f.k, e.target.value)} style={inp}>
-                  {f.opts.map(o => { const v = typeof o === "object" ? o.value : o; const l = typeof o === "object" ? o.label : o; return <option key={v} value={v}>{l}</option>; })}
+                  {(f.optsOf ? f.optsOf(form) : f.opts).map(o => { const v = typeof o === "object" ? o.value : o; const l = typeof o === "object" ? o.label : o; return <option key={v} value={v}>{l}</option>; })}
                 </select>
               ) : f.type === "multiselect" ? (
                 <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, background: C.paper, display: "flex", flexWrap: "wrap", gap: 8 }}>
