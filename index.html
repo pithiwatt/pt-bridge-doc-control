@@ -695,6 +695,9 @@ function Dashboard() {
 
   const tabs = [
     { id: "overview", label: "Overview", icon: "▦" },
+    // วางไว้ต้นแถวถัดจาก Overview เพราะเป็นเอกสารที่ทุกฝ่ายต้องเห็นก่อน (คำสั่งแต่งตั้ง นโยบาย)
+    // และไม่ถูกกรองตามสิทธิ์เหมือนหนังสือ/บันทึก
+    { id: "announce", label: "Announcements", icon: "📢" },
     { id: "outstanding", label: "Outstanding", icon: "⚑", badge: stats.oiOpen },
     { id: "rfa", label: "RFA", icon: "✓", badge: stats.rfaPending },
     { id: "rfi", label: "RFI", icon: "?" },
@@ -702,8 +705,6 @@ function Dashboard() {
     { id: "letters", label: "Letters", icon: "✉" },
     { id: "memos", label: "Memo", icon: "📝" },
     { id: "minutes", label: "Minutes", icon: "🗒" },
-    // ประกาศเป็นเอกสารที่ต้องการให้ทุกฝ่ายเห็น จึงไม่กรองตามสิทธิ์เหมือนหนังสือ/บันทึก
-    { id: "announce", label: "ประกาศ", icon: "📢" },
     { id: "report", label: "Report", icon: "📊" },
     ...(isEditor ? [{ id: "settings", label: "Settings", icon: "⚙" }] : []),
   ];
@@ -2258,7 +2259,7 @@ function buildFields(kind, config, workCodes, catCodes, partyCodes) {
   };
   return common[kind];
 }
-const TITLES = { outstanding: "Outstanding Issue", rfa: "RFA — ขออนุมัติ", rfis: "RFI — ขอข้อมูล", letters: "Letter", memos: "Memo", minutes: "Minutes — บันทึกการประชุม", announce: "ประกาศโครงการ", daily: "Daily Request / Daily Report" };
+const TITLES = { outstanding: "Outstanding Issue", rfa: "RFA — ขออนุมัติ", rfis: "RFI — ขอข้อมูล", letters: "Letter", memos: "Memo", minutes: "Minutes — บันทึกการประชุม", announce: "Announcement — ประกาศโครงการ", daily: "Daily Request / Daily Report" };
 
 function EditModal({ modal, data, config, workCodes, catCodes, partyCodes, onClose, onSave }) {
   const fields = buildFields(modal.kind, config, workCodes, catCodes, partyCodes);
