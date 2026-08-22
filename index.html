@@ -83,6 +83,8 @@ const DEFAULT_CONFIG = {
     { code: "MAT", label: "Material" }, { code: "GEN", label: "General RFA" },
   ],
   oiTypes: ["Design Issue", "Construction", "Approval Pending", "RFI Pending", "Safety Issue", "Admin", "Other"],
+  // หมวดของประกาศโครงการ (แท็บ ประกาศ)
+  announceCats: ["คำสั่งแต่งตั้ง", "นโยบาย", "ความปลอดภัย", "ระเบียบปฏิบัติ", "ประกาศทั่วไป"],
   // role: "owner" (เจ้าของงาน) | "main_contractor" (ผู้รับเหมาหลัก) | "subcontractor" (ผู้รับเหมาย่อย)
   // รหัสหน่วยงาน — ใช้ประกอบเป็นเลขที่เอกสาร (เช่น TDD-DRR-L-2569-0001)
   // และใช้ในช่อง "จาก/ถึง" ของทะเบียนหนังสือ · เพิ่ม/แก้ได้ที่ Settings → ผู้เกี่ยวข้อง
@@ -144,6 +146,7 @@ const SEED = {
   daily: [],
   memos: [],
   minutes: [],
+  announce: [],
 };
 
 // วันที่ปัจจุบันในรูปแบบ พ.ศ. YYYY-MM-DD — คำนวณจากนาฬิกาเครื่องผู้ใช้ทุกครั้งที่โหลดหน้า
@@ -190,6 +193,7 @@ const DATE_FIELD = {
   letters:     { submit: "date",   response: "due" },
   memos:       { submit: "date",   response: "date" },
   minutes:     { submit: "date",   response: "date" },
+  announce:    { submit: "date", response: "date" },
   daily:       { submit: "date",   response: "date" }, // Daily Request/Report ใช้วันปฏิบัติงานเป็นตัวอ้างอิงเดียว
   outstanding: { submit: "found",  response: "resolvedDate" },
 };
@@ -552,6 +556,21 @@ function Dashboard() {
   const catStyle = useMemo(() => catStyleFor(config.rfaCats), [config.rfaCats]);
   const catLabel = useMemo(() => { const m = {}; config.rfaCats.forEach(c => m[c.code] = c.label); return m; }, [config.rfaCats]);
 
+  // ── ขอบเขตการมองเห็นของ "เจ้าของงาน" ──
+  // เจ้าของงานเห็นเฉพาะเอกสารที่ตัวเองเป็นคู่สนทนา เพื่อไม่ให้เห็นการประสานงานภายในของฝั่งผู้รับจ้าง
+  // (หนังสือ/บันทึกที่ไม่มีเจ้าของงานเป็นผู้ส่งหรือผู้รับ = เขาไม่ใช่คู่กรณีของเอกสารฉบับนั้นอยู่แล้ว)
+  //
+  // ⚠ ข้อจำกัดที่ต้องรู้: นี่คือการกรอง "ที่หน้าจอ" เท่านั้น ไม่ใช่การรักษาความลับ
+  //    ข้อมูลทั้งโครงการยังถูกส่งมาที่เบราว์เซอร์ก่อนเสมอ และ doGet ใน Code.gs ก็ไม่ได้ตรวจสิทธิ์ใด ๆ
+  //    ถ้าต้องการกันจริง ต้องย้ายไปกรองใน Apps Script ก่อนส่งข้อมูลออกมา
+  const isOwnerView = role === "owner";
+  const ownerPartyCode = (config.parties.find(p => p.role === "owner") || {}).code || "";
+  const ownerIsParty = (r) => !ownerPartyCode || r.from === ownerPartyCode || r.to === ownerPartyCode;
+  const visibleLetters = isOwnerView ? data.letters.filter(ownerIsParty) : data.letters;
+  const visibleMemos = isOwnerView ? data.memos.filter(ownerIsParty) : data.memos;
+  // บันทึกการประชุมใช้เกณฑ์เดิมที่มีอยู่แล้ว คือธง scope "ภายใน" (ไม่ได้ดูจากผู้เข้าร่วม)
+  const visibleMinutes = isOwnerView ? data.minutes.filter(m => m.scope !== "internal") : data.minutes;
+
   const derivedDrawings = useMemo(() => {
     const out = [];
     data.rfa.forEach(r => { if (r.cat === "SHD" && r.sheetList) r.sheetList.forEach(s => out.push({ ...s, work: r.work, cat: r.cat, rfaRef: r.no, issued: r.submit })); });
@@ -559,13 +578,14 @@ function Dashboard() {
   }, [data.rfa]);
 
   const stats = useMemo(() => ({
-    letters: data.letters.length, rfa: data.rfa.length, rfi: data.rfis.length,
-    memos: data.memos.length, minutes: data.minutes.length,
+    letters: visibleLetters.length, rfa: data.rfa.length, rfi: data.rfis.length,
+    memos: visibleMemos.length, minutes: visibleMinutes.length,
     drawings: derivedDrawings.length,
     oiOpen: data.outstanding.filter(o => o.status !== "Closed").length,
     oiCritical: data.outstanding.filter(o => o.priority === "Critical" && o.status !== "Closed").length,
     rfaPending: data.rfa.filter(r => !["Approved", "Approved with Comment"].includes(r.status)).length,
-  }), [data, derivedDrawings]);
+    // role อยู่ใน deps ด้วย เพราะจำนวนหนังสือ/บันทึกขึ้นกับขอบเขตการมองเห็นของผู้ใช้ที่ล็อกอินอยู่
+  }), [data, derivedDrawings, role, ownerPartyCode]);
 
   const charts = useMemo(() => {
     // wf: ตัวกรองร่วมของ Overview — หมวดงาน + ประเภท RFA (SHD/MAT/...) + ช่วงวันที่ (อ้างอิง submit/response ตาม gDateRef)
@@ -682,6 +702,8 @@ function Dashboard() {
     { id: "letters", label: "Letters", icon: "✉" },
     { id: "memos", label: "Memo", icon: "📝" },
     { id: "minutes", label: "Minutes", icon: "🗒" },
+    // ประกาศเป็นเอกสารที่ต้องการให้ทุกฝ่ายเห็น จึงไม่กรองตามสิทธิ์เหมือนหนังสือ/บันทึก
+    { id: "announce", label: "ประกาศ", icon: "📢" },
     { id: "report", label: "Report", icon: "📊" },
     ...(isEditor ? [{ id: "settings", label: "Settings", icon: "⚙" }] : []),
   ];
@@ -699,6 +721,7 @@ function Dashboard() {
     data.letters.forEach(l => { if (predicate(l)) n++; });
     data.memos.forEach(m => { if (predicate(m)) n++; });
     data.minutes.forEach(m => { if (predicate(m)) n++; });
+    data.announce.forEach(a => { if (predicate(a)) n++; });
     return n;
   };
 
@@ -706,7 +729,7 @@ function Dashboard() {
   const buildSnapshot = () => ({
     rfa: data.rfa, rfis: data.rfis, letters: data.letters,
     memos: data.memos, minutes: data.minutes, daily: data.daily,
-    outstanding: data.outstanding, config: config,
+    announce: data.announce, outstanding: data.outstanding, config: config,
   });
 
   // Pre-login: ดึง "เฉพาะรายชื่อผู้ใช้" จาก Sheet ก่อนแสดงหน้า Login
@@ -742,6 +765,7 @@ function Dashboard() {
       const rLet = cleanRows(remote.letters, ["date", "due"]);
       const rMemo = cleanRows(remote.memos, ["date"]);
       const rMin = cleanRows(remote.minutes, ["date"]);
+      const rAnn = cleanRows(remote.announce, ["date"]);
       const rDaily = cleanRows(remote.daily, ["date"]);
       const rOut = cleanRows(remote.outstanding, ["target", "found", "resolvedDate"]);
       setData(d => ({
@@ -755,6 +779,7 @@ function Dashboard() {
         letters: Array.isArray(rLet) ? rLet : [],
         memos: Array.isArray(rMemo) ? rMemo : [],
         minutes: Array.isArray(rMin) ? rMin : [],
+        announce: Array.isArray(rAnn) ? rAnn : [],
         daily: Array.isArray(rDaily) ? rDaily : [],
         outstanding: Array.isArray(rOut) ? rOut : [],
       }));
@@ -1279,7 +1304,7 @@ function Dashboard() {
         })()}
 
         {tab === "letters" && (() => {
-          const rows = applySort(data.letters.map((l, idx) => ({ l, idx })).filter(({ l }) => (fStatus === "All" || l.status === fStatus) && (fFrom === "All" || l.from === fFrom) && (fTo === "All" || l.to === fTo) && inDateRange(l[dateFieldFor("letters", gDateRef)], gDateFrom, gDateTo) && matchQ(l)), x => x.l);
+          const rows = applySort(visibleLetters.map((l, idx) => ({ l, idx })).filter(({ l }) => (fStatus === "All" || l.status === fStatus) && (fFrom === "All" || l.from === fFrom) && (fTo === "All" || l.to === fTo) && inDateRange(l[dateFieldFor("letters", gDateRef)], gDateFrom, gDateTo) && matchQ(l)), x => x.l);
           return (
             <Panel title="ทะเบียนหนังสือโต้ตอบ" sub="ทะเบียนหนังสือเข้า-ออกระหว่างหน่วยงานที่เกี่ยวข้องในโครงการ" onAdd={() => setModal({ kind: "letters", index: null })} canEdit={isEditor}>
               <FilterBar q={q} setQ={setQ} placeholder="ค้นหาจากเลขที่หนังสือ เรื่อง หรือคำสำคัญ">
@@ -1287,7 +1312,7 @@ function Dashboard() {
                 <Select value={fTo} onChange={setFTo} options={["All", ...partyCodes]} label="ถึง" />
                 <Select value={fStatus} onChange={setFStatus} options={["All", ...config.statuses.lt]} label="สถานะ" />
                 <DateRangeFilter from={gDateFrom} to={gDateTo} onFrom={setGDateFrom} onTo={setGDateTo} ref_={gDateRef} onRef={setGDateRef} />
-                <Count n={rows.length} total={data.letters.length} />
+                <Count n={rows.length} total={visibleLetters.length} />
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}><tbody>
@@ -1310,7 +1335,7 @@ function Dashboard() {
         })()}
 
         {tab === "memos" && (() => {
-          const rows = applySort(data.memos.map((m, idx) => ({ m, idx })).filter(({ m }) => (fStatus === "All" || m.status === fStatus) && (fFrom === "All" || m.from === fFrom) && (fTo === "All" || m.to === fTo) && inDateRange(m[dateFieldFor("memos", gDateRef)], gDateFrom, gDateTo) && matchQ(m)), x => x.m);
+          const rows = applySort(visibleMemos.map((m, idx) => ({ m, idx })).filter(({ m }) => (fStatus === "All" || m.status === fStatus) && (fFrom === "All" || m.from === fFrom) && (fTo === "All" || m.to === fTo) && inDateRange(m[dateFieldFor("memos", gDateRef)], gDateFrom, gDateTo) && matchQ(m)), x => x.m);
           return (
             <Panel title="ทะเบียนบันทึกข้อความ" sub="ทะเบียนบันทึกข้อความภายในโครงการ พร้อมลิงก์ไฟล์จาก Google Drive" onAdd={() => setModal({ kind: "memos", index: null })} canEdit={isEditor}>
               <FilterBar q={q} setQ={setQ} placeholder="ค้นหาจากเลขที่บันทึก เรื่อง หรือคำสำคัญ">
@@ -1318,7 +1343,7 @@ function Dashboard() {
                 <Select value={fTo} onChange={setFTo} options={["All", ...partyCodes]} label="ถึง" />
                 <Select value={fStatus} onChange={setFStatus} options={["All", ...config.statuses.lt]} label="สถานะ" />
                 <DateRangeFilter from={gDateFrom} to={gDateTo} onFrom={setGDateFrom} onTo={setGDateTo} ref_={gDateRef} onRef={setGDateRef} />
-                <Count n={rows.length} total={data.memos.length} />
+                <Count n={rows.length} total={visibleMemos.length} />
               </FilterBar>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}><tbody>
@@ -1337,11 +1362,42 @@ function Dashboard() {
           );
         })()}
 
+        {tab === "announce" && (() => {
+          // ประกาศโครงการ — คลังไฟล์คำสั่ง/นโยบาย ให้ทุกฝ่ายเปิดดูได้ ไม่กรองตามสิทธิ์
+          const rows = applySort(data.announce.map((a, idx) => ({ a, idx })).filter(({ a }) => (fCat === "All" || a.cat === fCat) && (fFrom === "All" || a.issuedBy === fFrom) && inDateRange(a[dateFieldFor("announce", gDateRef)], gDateFrom, gDateTo) && matchQ(a)), x => x.a);
+          return (
+            <Panel title="ประกาศโครงการ" sub="คำสั่งแต่งตั้ง นโยบาย และประกาศต่าง ๆ ของโครงการ พร้อมลิงก์ไฟล์จาก Google Drive" onAdd={() => setModal({ kind: "announce", index: null })} canEdit={isEditor}>
+              <FilterBar q={q} setQ={setQ} placeholder="ค้นหาจากเลขที่ประกาศ เรื่อง หรือคำสำคัญ">
+                <Select value={fCat} onChange={setFCat} options={["All", ...(config.announceCats || [])]} label="หมวด" />
+                <Select value={fFrom} onChange={setFFrom} options={["All", ...partyCodes]} label="ผู้ออกประกาศ" />
+                <DateRangeFilter from={gDateFrom} to={gDateTo} onFrom={setGDateFrom} onTo={setGDateTo} ref_={gDateRef} onRef={setGDateRef} />
+                <Count n={rows.length} total={data.announce.length} />
+              </FilterBar>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}><tbody>
+                  <SortHead sort={sort} onSort={toggleSort} cols={[{ label: "เลขที่", key: "no" }, { label: "เรื่อง", key: "title" }, { label: "วันที่", key: "date", center: true }, { label: "หมวด", key: "cat", center: true }, { label: "ผู้ออกประกาศ", key: "issuedBy", center: true }, { label: "หมายเหตุ", key: "remark" }, { label: "ไฟล์", center: true }, { label: "", center: true }]} />
+                  {rows.length === 0 && <EmptyRow span={8} />}
+                  {rows.map(({ a, idx }) => (
+                    <tr key={idx} className="row-hover" style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <Td mono bold>{a.no}</Td>
+                      <Td>{a.title}</Td>
+                      <Td center sub>{fmtBEShort(a.date)}</Td>
+                      <Td center>{a.cat ? <Pill text={a.cat} bg="#E4ECF7" fg={C.blue} /> : "—"}</Td>
+                      <Td center><WorkTag w={a.issuedBy} /></Td>
+                      <Td sub>{a.remark || "—"}</Td>
+                      <Td center><FileBtn file={a.fileLink} /></Td>
+                      <Td center><RowActions show={isEditor} onEdit={() => setModal({ kind: "announce", index: idx })} onDel={() => { if (confirm("ลบประกาศฉบับนี้?")) { deleteRow("announce", idx); flash("ลบแล้ว"); } }} /></Td>
+                    </tr>))}
+                </tbody></table>
+              </div>
+            </Panel>
+          );
+        })()}
+
         {tab === "minutes" && (() => {
           const attendCodes = (m) => String(m.attendees || "").split(",").map(c => c.trim()).filter(Boolean);
           const toggleAttend = (code) => setFAttend(arr => arr.includes(code) ? arr.filter(c => c !== code) : [...arr, code]);
           // เจ้าของงาน (role === "owner") จะไม่เห็นบันทึกการประชุมที่ตั้งเป็น "ภายใน" (scope === "internal")
-          const visibleMinutes = role === "owner" ? data.minutes.filter(m => m.scope !== "internal") : data.minutes;
           // เลือกได้หลายหน่วยงาน — แสดงเฉพาะการประชุมที่มีหน่วยงานที่เลือกไว้เข้าร่วมครบทุกหน่วยงาน (เงื่อนไข "และ")
           const rows = applySort(visibleMinutes.map((m, idx) => ({ m, idx })).filter(({ m }) => (fStatus === "All" || m.status === fStatus) && (fAttend.length === 0 || fAttend.every(c => attendCodes(m).includes(c))) && inDateRange(m[dateFieldFor("minutes", gDateRef)], gDateFrom, gDateTo) && matchQ(m)), x => x.m);
           return (
@@ -1383,7 +1439,7 @@ function Dashboard() {
         {tab === "report" && (() => {
           // จำนวนรายการของแต่ละหมวดย่อย แสดงบนปุ่ม
           const repCounts = { daily: (data.daily || []).length };
-          REPORT_TYPES.forEach(r => { repCounts[r.code] = data.letters.filter(l => l.reportType === r.code).length; });
+          REPORT_TYPES.forEach(r => { repCounts[r.code] = visibleLetters.filter(l => l.reportType === r.code).length; });
           const subItems = [{ id: "daily", label: "Daily Report", icon: "📅" }, ...REPORT_TYPES.map(r => ({ id: r.code, label: r.label, icon: "📄" }))];
           const subBar = (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -1454,7 +1510,7 @@ function Dashboard() {
 
           // ══ Weekly / Monthly / Safety — เป็นมุมมองกรองของทะเบียนหนังสือ ไม่ใช่ทะเบียนใหม่ ══
           const rt = reportTypeOf(repSub);
-          const src = data.letters.map((l, idx) => ({ l, idx })).filter(({ l }) => l.reportType === repSub);
+          const src = visibleLetters.map((l, idx) => ({ l, idx })).filter(({ l }) => l.reportType === repSub);
           const rows = applySort(src.filter(({ l }) => (fStatus === "All" || l.status === fStatus) && (fFrom === "All" || l.from === fFrom) && (fTo === "All" || l.to === fTo) && inDateRange(l[dateFieldFor("letters", gDateRef)], gDateFrom, gDateTo) && matchQ(l)), x => x.l);
           // ⚠ งวดต้องอ่านจากช่อง reportPeriod ที่ผู้ใช้เลือกไว้เท่านั้น ห้ามคำนวณจากวันที่บนหนังสือ
           // เพราะหนังสือนำส่งหลังจบงวดเสมอ (เช่น รายงานช่วง 1–7 ส.ค. ออกหนังสือวันที่ 10 ส.ค.)
@@ -1615,6 +1671,7 @@ function SettingsTab({ config, setConfig, countUsage, flash, isAdmin }) {
     { id: "works", label: "หมวดงาน (Work Type)", icon: "⚒" },
     { id: "rfaCats", label: "ประเภท RFA", icon: "✓" },
     { id: "oiTypes", label: "ประเภทประเด็นคงค้าง", icon: "⚑" },
+    { id: "announceCats", label: "หมวดประกาศ", icon: "📢" },
     { id: "parties", label: "ผู้เกี่ยวข้อง", icon: "◎" },
     { id: "statuses", label: "สถานะของเอกสาร", icon: "◔" },
     { id: "priorities", label: "ระดับความสำคัญ", icon: "▲" },
@@ -1662,6 +1719,10 @@ function SettingsTab({ config, setConfig, countUsage, flash, isAdmin }) {
           {section === "oiTypes" && <ListEditor title="ประเภท Issue" items={config.oiTypes} ph="Quality Issue"
             onChange={(items) => setConfig(c => ({ ...c, oiTypes: items }))}
             usage={(v) => countUsage(r => r.type === v)} flash={flash} />}
+
+          {section === "announceCats" && <ListEditor title="หมวดประกาศ" items={config.announceCats || []} ph="ระเบียบปฏิบัติ"
+            onChange={(items) => setConfig(c => ({ ...c, announceCats: items }))}
+            usage={(v) => countUsage(r => r.cat === v)} flash={flash} />}
 
           {section === "priorities" && <ListEditor title="Priority" items={config.priorities} ph="Urgent"
             onChange={(items) => setConfig(c => ({ ...c, priorities: items }))}
@@ -2160,6 +2221,14 @@ function buildFields(kind, config, workCodes, catCodes, partyCodes) {
       { k: "remark", label: "หมายเหตุ", type: "textarea", ph: "บันทึกประเด็นเพิ่มเติมของหนังสือฉบับนี้ (ถ้ามี)" },
       { k: "fileSubmit", label: "ไฟล์ที่นำส่ง", type: "file" }, { k: "fileResponse", label: "ไฟล์ตอบกลับ", type: "file" },
     ],
+    announce: [
+      { k: "no", label: "เลขที่ประกาศ/คำสั่ง", ph: "เช่น ประกาศที่ 1/2569" }, { k: "date", label: "วันที่ประกาศ", type: "date" },
+      { k: "cat", label: "หมวด", type: "select", opts: config.announceCats || [] },
+      { k: "issuedBy", label: "ผู้ออกประกาศ", type: "select", opts: partyCodes },
+      { k: "title", label: "เรื่อง", type: "textarea" },
+      { k: "fileLink", label: "ไฟล์ประกาศ", type: "file" },
+      { k: "remark", label: "หมายเหตุ", type: "textarea", ph: "รายละเอียดเพิ่มเติม (ถ้ามี)" },
+    ],
     daily: [
       { k: "date", label: "วันที่ปฏิบัติงาน", type: "date" },
       { k: "note", label: "หมายเหตุ (เช่น สภาพอากาศ เหตุที่ทำให้หยุดงาน)", type: "textarea" },
@@ -2189,7 +2258,7 @@ function buildFields(kind, config, workCodes, catCodes, partyCodes) {
   };
   return common[kind];
 }
-const TITLES = { outstanding: "Outstanding Issue", rfa: "RFA — ขออนุมัติ", rfis: "RFI — ขอข้อมูล", letters: "Letter", memos: "Memo", minutes: "Minutes — บันทึกการประชุม", daily: "Daily Request / Daily Report" };
+const TITLES = { outstanding: "Outstanding Issue", rfa: "RFA — ขออนุมัติ", rfis: "RFI — ขอข้อมูล", letters: "Letter", memos: "Memo", minutes: "Minutes — บันทึกการประชุม", announce: "ประกาศโครงการ", daily: "Daily Request / Daily Report" };
 
 function EditModal({ modal, data, config, workCodes, catCodes, partyCodes, onClose, onSave }) {
   const fields = buildFields(modal.kind, config, workCodes, catCodes, partyCodes);
